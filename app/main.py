@@ -38,6 +38,11 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/keep-alive")
+async def keep_alive() -> dict[str, str]:
+    return {"status": "awake"}
+
+
 @app.get("/reservations")
 async def reservations(request: Request, limit: int = 50) -> dict[str, Any]:
     configured_token = os.getenv("STAFF_ACCESS_TOKEN")
@@ -52,19 +57,31 @@ async def reservations(request: Request, limit: int = 50) -> dict[str, Any]:
 async def twilio_inbound(request: Request) -> Response:
     public_base_url = get_public_base_url(request)
     stream_url = f"{public_base_url.replace('https://', 'wss://').replace('http://', 'ws://')}/twilio/media"
-    staff_transfer_phone = os.getenv("STAFF_TRANSFER_PHONE", "").strip()
 
-    if staff_transfer_phone:
-        transfer_twiml = f"  <Dial>{staff_transfer_phone}</Dial>"
-    else:
-        transfer_twiml = "  <Say>Our team is not available right now. Please call back during business hours.</Say>"
-
+    # IMPORTANTE: nessun <Dial> qui come fallback.
+    # Il trasferimento avviene SOLO via WebSocket quando Isabel lo decide.
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
     <Stream url="{stream_url}" />
   </Connect>
-{transfer_twiml}
+</Response>"""
+    return Response(content=twiml, media_type="application/xml")
+
+
+@app.post("/twilio/transfer")
+async def twilio_transfer(request: Request) -> Response:
+    """Endpoint chiamato via Twilio REST API per trasferire la chiamata live."""
+    staff_phone = os.getenv("STAFF_TRANSFER_PHONE", "").strip()
+    if staff_phone:
+        twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial>{staff_phone}</Dial>
+</Response>"""
+    else:
+        twiml = """<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Our team is not available right now. Please call back during business hours.</Say>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -87,6 +104,7 @@ async def twilio_media(websocket: WebSocket) -> None:
     openai_key = os.environ["OPENAI_API_KEY"]
     realtime_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview"
     stream_sid: str | None = None
+    call_sid: str | None = None
     transfer_requested = False
     call_started = False
     closing_for_transfer = False
@@ -102,7 +120,7 @@ async def twilio_media(websocket: WebSocket) -> None:
         await configure_realtime_session(openai_ws)
 
         async def receive_from_twilio() -> None:
-            nonlocal stream_sid, call_started, closing_for_transfer
+            nonlocal stream_sid, call_sid, call_started, closing_for_transfer
             try:
                 async for raw_message in websocket.iter_text():
                     message = json.loads(raw_message)
@@ -110,9 +128,9 @@ async def twilio_media(websocket: WebSocket) -> None:
 
                     if event == "start":
                         stream_sid = message["start"]["streamSid"]
+                        call_sid = message["start"].get("callSid")
                         if not call_started:
                             call_started = True
-                            # Trigger greeting once only
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
@@ -158,7 +176,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                         "media": {"payload": event["delta"]},
                     })
                 elif event_type == "response.function_call_arguments.done":
-                    result = await handle_tool_call(openai_ws, event)
+                    result = await handle_tool_call(openai_ws, event, call_sid)
                     if result.get("transfer_to_staff"):
                         transfer_requested = True
                 elif event_type == "response.done" and transfer_requested:
@@ -210,7 +228,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                         "properties": {
                             "day": {
                                 "type": "string",
-                                "description": "Day of the week, e.g. monday, saturday. Leave empty for today."
+                                "description": "Day of the week e.g. monday, saturday. Leave empty for today."
                             }
                         },
                     },
@@ -232,14 +250,11 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                 {
                     "type": "function",
                     "name": "get_restaurant_info",
-                    "description": "Answers questions about address, chef, reservations, takeout, delivery, BYOB, allergies, large parties.",
+                    "description": "Answers questions about address, chef, reservations, takeout, delivery, BYOB, allergies.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "topic": {
-                                "type": "string",
-                                "description": "Topic the caller is asking about."
-                            }
+                            "topic": {"type": "string"}
                         },
                         "required": ["topic"],
                     },
@@ -247,14 +262,11 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                 {
                     "type": "function",
                     "name": "resolve_reservation_date",
-                    "description": "Converts relative dates like 'next Saturday' or 'tomorrow' into exact calendar dates.",
+                    "description": "Converts relative dates like next Saturday or tomorrow into exact calendar dates.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "date_text": {
-                                "type": "string",
-                                "description": "Natural language date from caller."
-                            }
+                            "date_text": {"type": "string"}
                         },
                         "required": ["date_text"],
                     },
@@ -262,16 +274,16 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                 {
                     "type": "function",
                     "name": "create_reservation_request",
-                    "description": "Records a reservation request after collecting all required info and confirming the exact date. For 10 or more people, triggers owner transfer instead.",
+                    "description": "Records a reservation request after collecting all info and confirming the exact date. For 10 or more people triggers owner transfer automatically.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "date": {"type": "string", "description": "Exact date like 2026-05-30"},
+                            "date": {"type": "string"},
                             "time": {"type": "string"},
                             "party_size": {"type": "integer"},
                             "phone": {"type": "string"},
-                            "date_confirmed": {"type": "boolean", "description": "True only after caller confirmed the exact date."},
+                            "date_confirmed": {"type": "boolean"},
                             "notes": {"type": "string"},
                         },
                         "required": ["name", "date", "time", "party_size", "phone", "date_confirmed"],
@@ -280,14 +292,11 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                 {
                     "type": "function",
                     "name": "request_human_transfer",
-                    "description": "Transfer to staff ONLY when: caller explicitly asks for a person/manager/owner, caller is angry/upset, caller has complaint, caller asks about serious allergy or celiac safety, caller wants to change or cancel existing reservation, caller asks for real-time availability.",
+                    "description": "Transfer to staff ONLY when: caller asks for manager/owner/person, caller is angry or has complaint, caller asks about serious allergy or celiac, caller wants to change or cancel existing reservation, caller asks real-time availability.",
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "reason": {
-                                "type": "string",
-                                "description": "Short reason: manager_request, complaint, allergy_concern, change_existing_reservation, caller_request."
-                            },
+                            "reason": {"type": "string"},
                             "caller_name": {"type": "string"},
                             "caller_phone": {"type": "string"},
                         },
@@ -300,7 +309,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
     }))
 
 
-async def handle_tool_call(openai_ws: Any, event: dict[str, Any]) -> dict[str, Any]:
+async def handle_tool_call(openai_ws: Any, event: dict[str, Any], call_sid: str | None = None) -> dict[str, Any]:
     name = event.get("name")
     call_id = event.get("call_id")
     arguments = json.loads(event.get("arguments") or "{}")
