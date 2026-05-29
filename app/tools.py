@@ -83,10 +83,11 @@ def get_restaurant_info(config: dict, topic: str) -> str:
 
 def request_human_transfer(reason: str, caller_name: str | None = None, caller_phone: str | None = None) -> dict:
     staff_phone = os.getenv("STAFF_TRANSFER_PHONE", "").strip()
-    if staff_phone:
+    if staff_phone and live_transfer_configured():
         return {
             "transfer_to_staff": True,
             "staff_phone_configured": True,
+            "live_transfer_configured": True,
             "reason": reason,
             "caller_name": caller_name or "",
             "caller_phone": caller_phone or "",
@@ -95,12 +96,18 @@ def request_human_transfer(reason: str, caller_name: str | None = None, caller_p
 
     return {
         "transfer_to_staff": False,
-        "staff_phone_configured": False,
+        "staff_phone_configured": bool(staff_phone),
+        "live_transfer_configured": False,
         "reason": reason,
         "caller_name": caller_name or "",
         "caller_phone": caller_phone or "",
         "assistant_next_step": "Tell the caller that staff transfer is not available right now, then collect their name, phone number, and a short message for the restaurant team.",
     }
+
+
+def live_transfer_configured() -> bool:
+    required_env = ("STAFF_TRANSFER_PHONE", "TWILIO_ACCOUNT_SID", "TWILIO_AUTH_TOKEN")
+    return all(os.getenv(name, "").strip() for name in required_env)
 
 
 def resolve_reservation_date(date_text: str) -> dict:
@@ -339,24 +346,62 @@ def format_display_date(value: date_cls) -> str:
 
 
 def create_reservation_request(
-    name: str,
-    date: str,
-    time: str,
     party_size: int,
-    phone: str,
+    name: str = "",
+    date: str = "",
+    time: str = "",
+    phone: str = "",
     date_confirmed: bool = False,
     notes: str | None = None,
 ) -> dict:
+    if party_size <= 0:
+        return {
+            "status": "needs_reservation_details",
+            "transfer_to_staff": False,
+            "missing_fields": ["party_size"],
+            "assistant_next_step": "Ask the caller how many people the reservation is for.",
+        }
+
     if party_size >= 10:
+        if not live_transfer_configured():
+            return {
+                "status": "requires_staff_for_large_party",
+                "transfer_to_staff": False,
+                "live_transfer_configured": False,
+                "party_size": party_size,
+                "reason": "large party of 10 or more",
+                "caller_name": name,
+                "caller_phone": phone,
+                "assistant_next_step": "Tell the caller that large parties need the owner, but live transfer is not available right now. Collect their name, phone number, requested date/time, and tell them the team will follow up.",
+            }
         return {
             "status": "requires_staff_for_large_party",
             "transfer_to_staff": True,
+            "live_transfer_configured": True,
             "party_size": party_size,
             "reason": "large party of 10 or more",
             "caller_name": name,
             "caller_phone": phone,
-            "transfer_message": "I’m allowed to take reservations for up to 9 people. I’ll transfer the call directly to the owner to finalize your reservation. Thank you, and have a great day.",
-            "assistant_next_step": "Say: I’m allowed to take reservations for up to 9 people. I’ll transfer the call directly to the owner to finalize your reservation. Thank you, and have a great day.",
+            "transfer_message": "I'm allowed to take reservations for up to 9 people. I'll transfer the call directly to the owner to finalize your reservation. Thank you, and have a great day.",
+            "assistant_next_step": "Say: I'm allowed to take reservations for up to 9 people. I'll transfer the call directly to the owner to finalize your reservation. Thank you, and have a great day.",
+        }
+
+    missing_fields = [
+        field
+        for field, value in {
+            "name": name,
+            "date": date,
+            "time": time,
+            "phone": phone,
+        }.items()
+        if not str(value).strip()
+    ]
+    if missing_fields:
+        return {
+            "status": "needs_reservation_details",
+            "transfer_to_staff": False,
+            "missing_fields": missing_fields,
+            "assistant_next_step": f"Ask the caller for the next missing reservation detail: {missing_fields[0]}.",
         }
 
     parsed = resolve_reservation_date(date)

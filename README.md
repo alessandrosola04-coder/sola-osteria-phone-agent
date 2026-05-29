@@ -73,9 +73,12 @@ Variabili ambiente da impostare:
 
 ```env
 OPENAI_API_KEY=...
-REALTIME_MODEL=gpt-realtime-mini
+REALTIME_MODEL=gpt-realtime
 RESTAURANT_CONFIG=data/restaurant.json
 STAFF_TRANSFER_PHONE=+12019954521
+PUBLIC_BASE_URL=https://TUO-SERVIZIO.onrender.com
+TWILIO_ACCOUNT_SID=...
+TWILIO_AUTH_TOKEN=...
 STAFF_ACCESS_TOKEN=un-token-lungo-da-inventare
 RESERVATION_NOTIFY_EMAIL=ms@solaosteria.com
 ```
@@ -134,6 +137,9 @@ Per abilitare il trasferimento, aggiungi in `.env`:
 
 ```env
 STAFF_TRANSFER_PHONE=+12018575100
+TWILIO_ACCOUNT_SID=AC...
+TWILIO_AUTH_TOKEN=...
+PUBLIC_BASE_URL=https://TUO-SERVIZIO.onrender.com
 ```
 
 Se `STAFF_TRANSFER_PHONE` e' vuoto, Isabel raccoglie nome, telefono e messaggio per follow-up.

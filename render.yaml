@@ -8,7 +8,7 @@ services:
     healthCheckPath: /health
     envVars:
       - key: REALTIME_MODEL
-        value: gpt-realtime-mini
+        value: gpt-realtime
       - key: RESTAURANT_CONFIG
         value: data/restaurant.json
       - key: STAFF_TRANSFER_PHONE
@@ -19,3 +19,9 @@ services:
         sync: false
       - key: STAFF_ACCESS_TOKEN
         generateValue: true
+      - key: PUBLIC_BASE_URL
+        value: https://sola-osteria-phone-agent.onrender.com
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false

@@ -1,8 +1,13 @@
 import asyncio
+import base64
 import contextlib
 import json
 import os
 from typing import Any
+from urllib.error import URLError
+from urllib.parse import urlencode
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
 import websockets
 from dotenv import load_dotenv
@@ -63,8 +68,11 @@ async def twilio_inbound(request: Request) -> Response:
     twiml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Connect>
-    <Stream url="{stream_url}" />
+    <Stream url="{stream_url}">
+      <Parameter name="publicBaseUrl" value="{public_base_url}" />
+    </Stream>
   </Connect>
+  <Say>Sorry, I am having trouble connecting the assistant right now. Please call the restaurant team directly.</Say>
 </Response>"""
     return Response(content=twiml, media_type="application/xml")
 
@@ -97,14 +105,49 @@ def get_public_base_url(request: Request) -> str:
     return str(request.base_url).rstrip("/")
 
 
+async def redirect_twilio_call_to_transfer(call_sid: str | None, public_base_url: str | None = None) -> bool:
+    """Redirect an active Twilio call to the transfer TwiML endpoint."""
+    if not call_sid:
+        print("Twilio transfer skipped: missing callSid")
+        return False
+
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+    base_url = (public_base_url or os.getenv("PUBLIC_BASE_URL", "")).strip().rstrip("/")
+    if not all([account_sid, auth_token, base_url]):
+        print("Twilio transfer skipped: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, or PUBLIC_BASE_URL missing")
+        return False
+
+    transfer_url = f"{base_url}/twilio/transfer"
+    api_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Calls/{call_sid}.json"
+    body = urlencode({"Url": transfer_url, "Method": "POST"}).encode("utf-8")
+
+    def _send_redirect() -> bool:
+        request = UrlRequest(api_url, data=body, method="POST")
+
+        credentials = base64.b64encode(f"{account_sid}:{auth_token}".encode("utf-8")).decode("ascii")
+        request.add_header("Authorization", f"Basic {credentials}")
+        request.add_header("Content-Type", "application/x-www-form-urlencoded")
+        try:
+            with urlopen(request, timeout=10) as response:
+                return 200 <= response.status < 300
+        except URLError as exc:
+            print(f"Twilio transfer failed: {exc}")
+            return False
+
+    return await asyncio.to_thread(_send_redirect)
+
+
 @app.websocket("/twilio/media")
 async def twilio_media(websocket: WebSocket) -> None:
     await websocket.accept()
 
     openai_key = os.environ["OPENAI_API_KEY"]
-    realtime_url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview"
+    realtime_model = os.getenv("REALTIME_MODEL", "gpt-realtime")
+    realtime_url = f"wss://api.openai.com/v1/realtime?model={realtime_model}"
     stream_sid: str | None = None
     call_sid: str | None = None
+    public_base_url: str | None = None
     transfer_requested = False
     call_started = False
     closing_for_transfer = False
@@ -112,15 +155,12 @@ async def twilio_media(websocket: WebSocket) -> None:
 
     async with websockets.connect(
         realtime_url,
-        additional_headers={
-            "Authorization": f"Bearer {openai_key}",
-            "OpenAI-Beta": "realtime=v1",
-        },
+        additional_headers={"Authorization": f"Bearer {openai_key}"},
     ) as openai_ws:
         await configure_realtime_session(openai_ws)
 
         async def receive_from_twilio() -> None:
-            nonlocal stream_sid, call_sid, call_started, closing_for_transfer
+            nonlocal stream_sid, call_sid, public_base_url, call_started, closing_for_transfer
             try:
                 async for raw_message in websocket.iter_text():
                     message = json.loads(raw_message)
@@ -129,12 +169,14 @@ async def twilio_media(websocket: WebSocket) -> None:
                     if event == "start":
                         stream_sid = message["start"]["streamSid"]
                         call_sid = message["start"].get("callSid")
+                        custom_parameters = message["start"].get("customParameters", {})
+                        public_base_url = custom_parameters.get("publicBaseUrl") or None
                         if not call_started:
                             call_started = True
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
-                                    "modalities": ["audio"],
+                                    "output_modalities": ["audio"],
                                     "instructions": (
                                         "Greet the caller by saying exactly: "
                                         "'Sola Osteria, this is Isabel the AI receptionist, how can I help you?' "
@@ -175,6 +217,12 @@ async def twilio_media(websocket: WebSocket) -> None:
                         "streamSid": stream_sid,
                         "media": {"payload": event["delta"]},
                     })
+                elif event_type == "response.output_audio.delta" and stream_sid:
+                    await websocket.send_json({
+                        "event": "media",
+                        "streamSid": stream_sid,
+                        "media": {"payload": event["delta"]},
+                    })
                 elif event_type == "response.function_call_arguments.done":
                     result = await handle_tool_call(openai_ws, event, call_sid)
                     if result.get("transfer_to_staff"):
@@ -192,6 +240,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                         except asyncio.TimeoutError:
                             pass
                     await asyncio.sleep(0.5)
+                    await redirect_twilio_call_to_transfer(call_sid, public_base_url)
                     with contextlib.suppress(Exception):
                         await openai_ws.close()
                     with contextlib.suppress(Exception):
@@ -207,16 +256,25 @@ async def configure_realtime_session(openai_ws: Any) -> None:
     await openai_ws.send(json.dumps({
         "type": "session.update",
         "session": {
-            "modalities": ["audio", "text"],
+            "type": "realtime",
             "instructions": build_agent_instructions(restaurant),
-            "voice": "alloy",
-            "input_audio_format": "g711_ulaw",
-            "output_audio_format": "g711_ulaw",
-            "turn_detection": {
-                "type": "server_vad",
-                "threshold": 0.6,
-                "prefix_padding_ms": 300,
-                "silence_duration_ms": 700,
+            "output_modalities": ["audio"],
+            "audio": {
+                "input": {
+                    "format": {"type": "audio/pcmu"},
+                    "turn_detection": {
+                        "type": "server_vad",
+                        "threshold": 0.6,
+                        "prefix_padding_ms": 300,
+                        "silence_duration_ms": 700,
+                        "create_response": True,
+                        "interrupt_response": True,
+                    },
+                },
+                "output": {
+                    "format": {"type": "audio/pcmu"},
+                    "voice": "alloy",
+                },
             },
             "tools": [
                 {
@@ -286,7 +344,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                             "date_confirmed": {"type": "boolean"},
                             "notes": {"type": "string"},
                         },
-                        "required": ["name", "date", "time", "party_size", "phone", "date_confirmed"],
+                        "required": ["party_size"],
                     },
                 },
                 {
@@ -312,7 +370,10 @@ async def configure_realtime_session(openai_ws: Any) -> None:
 async def handle_tool_call(openai_ws: Any, event: dict[str, Any], call_sid: str | None = None) -> dict[str, Any]:
     name = event.get("name")
     call_id = event.get("call_id")
-    arguments = json.loads(event.get("arguments") or "{}")
+    try:
+        arguments = json.loads(event.get("arguments") or "{}")
+    except json.JSONDecodeError:
+        arguments = {}
 
     if name == "check_hours":
         result = check_hours(restaurant, arguments.get("day"))
@@ -323,7 +384,19 @@ async def handle_tool_call(openai_ws: Any, event: dict[str, Any], call_sid: str 
     elif name == "resolve_reservation_date":
         result = resolve_reservation_date(arguments.get("date_text", ""))
     elif name == "create_reservation_request":
-        result = create_reservation_request(**arguments)
+        try:
+            party_size = int(arguments.get("party_size") or 0)
+        except (TypeError, ValueError):
+            party_size = 0
+        result = create_reservation_request(
+            party_size=party_size,
+            name=arguments.get("name", ""),
+            date=arguments.get("date", ""),
+            time=arguments.get("time", ""),
+            phone=arguments.get("phone", ""),
+            date_confirmed=bool(arguments.get("date_confirmed", False)),
+            notes=arguments.get("notes"),
+        )
     elif name == "request_human_transfer":
         result = request_human_transfer(
             reason=arguments.get("reason", ""),
@@ -347,7 +420,7 @@ async def handle_tool_call(openai_ws: Any, event: dict[str, Any], call_sid: str 
         await openai_ws.send(json.dumps({
             "type": "response.create",
             "response": {
-                "modalities": ["audio"],
+                "output_modalities": ["audio"],
                 "instructions": f"Say exactly these words and nothing else: {transfer_msg}",
             },
         }))
