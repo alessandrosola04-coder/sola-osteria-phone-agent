@@ -1,0 +1,175 @@
+{
+  "name": "Sola Osteria",
+  "language": "en",
+  "secondary_languages": ["it"],
+  "website": "https://www.solaosteria.com/",
+  "address": "17 S Broad Street, Ridgewood, NJ 07450",
+  "phone": "(201) 857-5100",
+  "email": "ms@solaosteria.com",
+  "reservation_url": "https://resy.com/cities/ridgewood-nj/venues/sola-osteria",
+  "delivery_url": "https://www.order.store/",
+  "short_description": "Sola Osteria is an authentic Italian osteria in Ridgewood, New Jersey, led by Chef/Owner Massimo Sola.",
+  "positioning": "Italian restaurant focused on handmade pasta, seasonal ingredients, seafood, classic Italian dishes, and a warm family-style osteria experience.",
+  "byob": true,
+  "neighborhood": "Ridgewood, New Jersey",
+  "chef": {
+    "name": "Massimo Sola",
+    "role": "Chef/Owner",
+    "notes": "Chef Massimo Sola has more than 40 years of culinary experience. He earned a Michelin star in Italy in 2007 before opening Sola Osteria in Ridgewood."
+  },
+  "team": [
+    {
+      "name": "Massimo Sola",
+      "role": "Chef/Owner"
+    },
+    {
+      "name": "Niccolo Sola",
+      "role": "Manager"
+    }
+  ],
+  "hours": {
+    "monday": "12:15 PM - 9:00 PM",
+    "tuesday": "Closed",
+    "wednesday": "12:15 PM - 9:00 PM",
+    "thursday": "12:15 PM - 10:00 PM",
+    "friday": "12:15 PM - 10:00 PM",
+    "saturday": "12:15 PM - 10:00 PM",
+    "sunday": "2:00 PM - 8:00 PM"
+  },
+  "services": {
+    "dine_in": "Available during business hours.",
+    "reservations": "Reservations can be made through Resy or by contacting the restaurant.",
+    "takeout": "Take-out is available through the website/order link when ordering is open.",
+    "delivery": "Delivery is available through the restaurant's delivery link when ordering is open.",
+    "private_events": "For private events or large parties, collect the caller's name, phone number, party size, preferred date, and notes, then have staff follow up."
+  },
+  "menu_categories": {
+    "antipasti": [
+      {
+        "name": "It's like a Ceviche",
+        "description": "Tuna, amberjack, salmon, olives, capers, sour drops.",
+        "price": "$21"
+      },
+      {
+        "name": "Zucchine",
+        "description": "Rolled green squash with pumpkin, ricotta, truffle and cheese fondue.",
+        "price": "$18"
+      },
+      {
+        "name": "Burrata",
+        "description": "Imported burrata with prosciutto, figs, arugula, saba and extra virgin olive oil.",
+        "price": "$21"
+      },
+      {
+        "name": "Guazzetto",
+        "description": "Prince Edward Island mussels and clams with red indiavolata sauce.",
+        "price": "$22"
+      },
+      {
+        "name": "Mediterraneo",
+        "description": "Pan-seared octopus, shrimp, artichoke, pesto mayo and fresh ricotta base.",
+        "price": "$22"
+      },
+      {
+        "name": "Oysters",
+        "description": "Nine oysters with mignonette sauce.",
+        "price": "$22"
+      }
+    ],
+    "pasta": [
+      {
+        "name": "Gnocchi Sorrento",
+        "description": "Hand-rolled potato dumplings with cherry tomato fondue and buffalo mozzarella.",
+        "price": "$20"
+      },
+      {
+        "name": "Cavatelli Puglia",
+        "description": "Cavatelli with lightly spicy sausage and broccoli.",
+        "price": "$23"
+      },
+      {
+        "name": "Cacio & Pepe",
+        "description": "Bucatini with pecorino romano and toasted black pepper.",
+        "price": "$22"
+      },
+      {
+        "name": "Lasagna for Two",
+        "description": "Layered pasta with bechamel.",
+        "price": "$49"
+      },
+      {
+        "name": "Ravioli",
+        "description": "Handmade ravioli with spinach, ricotta and Parmigiano Reggiano.",
+        "price": "$25"
+      },
+      {
+        "name": "Tagliolini Neri",
+        "description": "Squid ink pasta with seafood and lobster bisque.",
+        "price": "$29"
+      }
+    ],
+    "secondi": [
+      {
+        "name": "Branzino",
+        "description": "Filleted branzino barbecued on a skewer.",
+        "price": "$35"
+      }
+    ],
+    "dessert": [
+      {
+        "name": "Tiramisu",
+        "description": "Mascarpone, blueberries and whipped cream.",
+        "price": "$12"
+      },
+      {
+        "name": "Chocolate Mousse",
+        "description": "Mamma Nella style chocolate mousse.",
+        "price": "$12"
+      }
+    ]
+  },
+  "menu_highlights": [
+    "Gnocchi Sorrento",
+    "Cavatelli Puglia",
+    "Cacio & Pepe",
+    "Lasagna for Two",
+    "Ravioli",
+    "Tagliolini Neri",
+    "Mediterraneo",
+    "Guazzetto",
+    "Branzino",
+    "Tiramisu"
+  ],
+  "common_answers": {
+    "address": "Sola Osteria is at 17 S Broad Street in Ridgewood, New Jersey, 07450.",
+    "phone": "The restaurant phone number is (201) 857-5100.",
+    "email": "The restaurant email is ms@solaosteria.com.",
+    "parking": "The website does not list parking details. Offer to have staff confirm parking guidance.",
+    "dress_code": "The website does not list a dress code. Describe the restaurant as a polished but warm Italian osteria and offer staff confirmation if needed.",
+    "gift_cards": "The website does not list gift card details. Offer to have staff follow up.",
+    "outdoor_seating": "The website does not clearly list outdoor seating. Offer to have staff confirm.",
+    "wheelchair_access": "The website does not clearly list accessibility details. Offer to have staff confirm.",
+    "kids": "The website does not publish a kids menu. Families are welcome unless staff says otherwise, but do not promise a dedicated kids menu.",
+    "gluten_free": "The restaurant may be able to discuss accommodations, but the assistant must not guarantee gluten-free preparation. Have staff confirm.",
+    "vegan": "The assistant can mention that the menu is Italian and ingredient-based, but must have staff confirm vegan options.",
+    "vegetarian": "Several dishes may be vegetarian, such as some pasta and vegetable appetizers, but ingredients and availability should be confirmed by staff."
+  },
+  "policies": {
+    "reservations": "Reservations are handled through Resy or by staff. The assistant may collect a reservation request, but final confirmation must come from the restaurant team.",
+    "reservation_details_to_collect": "Name, phone number, date, time, number of guests, indoor/outdoor preference if asked, occasion, dietary restrictions, and any notes.",
+    "large_parties": "For parties of 10 or more, private events, buyouts, or complicated requests, transfer to the owner if available. Isabel may take normal reservation requests for up to 9 people. If transfer is not configured, collect name, phone number, party size, preferred date/time, and notes for staff follow-up.",
+    "takeaway": "Take-out is offered from the website/order link when open. The assistant should guide customers to online ordering or collect a callback request if details are unclear.",
+    "delivery": "Delivery is offered through the restaurant's delivery link when open.",
+    "allergens": "For allergies, dietary restrictions, celiac/gluten-free safety, or ingredient safety, the assistant must avoid guarantees and offer to connect the customer with staff.",
+    "wine": "The site describes Sola Osteria as BYOB. If a caller asks detailed alcohol questions, answer cautiously and offer staff confirmation.",
+    "prices": "Prices may change. If giving prices from the data, say they are listed prices and staff can confirm current pricing.",
+    "availability": "Never promise table availability. Only collect requests or direct guests to Resy.",
+    "emergency": "For urgent medical, safety, or emergency issues, tell the caller to call emergency services."
+  },
+  "voice_style": {
+    "default_language": "English",
+    "italian_behavior": "If the caller speaks Italian, switch to natural Italian.",
+    "tone": "Warm, efficient, professional, and calm.",
+    "length": "Keep answers short. Ask one question at a time during reservations."
+  }
+}

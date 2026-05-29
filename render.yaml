@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: sola-osteria-phone-agent
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: REALTIME_MODEL
+        value: gpt-realtime-mini
+      - key: RESTAURANT_CONFIG
+        value: data/restaurant.json
+      - key: STAFF_TRANSFER_PHONE
+        value: "+12019954521"
+      - key: RESERVATION_NOTIFY_EMAIL
+        value: ms@solaosteria.com
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: STAFF_ACCESS_TOKEN
+        generateValue: true
