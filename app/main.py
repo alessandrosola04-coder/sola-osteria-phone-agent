@@ -266,7 +266,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                         "type": "server_vad",
                         "threshold": 0.55,
                         "prefix_padding_ms": 500,
-                        "silence_duration_ms": 1100,
+                        "silence_duration_ms": 850,
                         "create_response": True,
                         "interrupt_response": True,
                     },
