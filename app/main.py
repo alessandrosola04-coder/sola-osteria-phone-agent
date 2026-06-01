@@ -406,6 +406,9 @@ async def handle_tool_call(openai_ws: Any, event: dict[str, Any], call_sid: str 
     else:
         result = {"error": f"Unknown tool: {name}"}
 
+    if not isinstance(result, dict):
+        result = {"message": str(result)}
+
     await openai_ws.send(json.dumps({
         "type": "conversation.item.create",
         "item": {
