@@ -178,9 +178,10 @@ async def twilio_media(websocket: WebSocket) -> None:
                                 "response": {
                                     "output_modalities": ["audio"],
                                     "instructions": (
-                                        "Greet the caller by saying exactly: "
+                                        "Say ONLY this exact greeting and then immediately stop and wait: "
                                         "'Sola Osteria, this is Isabel the AI receptionist, how can I help you?' "
-                                        "Say nothing else. Wait for the caller to respond."
+                                        "Do NOT say anything else. Do NOT mention hours, reservations, or ask follow-up questions. "
+                                        "After saying the greeting, remain completely silent until the caller speaks first."
                                     ),
                                 }
                             }))
