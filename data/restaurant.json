@@ -150,7 +150,7 @@
     "outdoor_seating": "The website does not clearly list outdoor seating. Offer to have staff confirm.",
     "wheelchair_access": "The website does not clearly list accessibility details. Offer to have staff confirm.",
     "kids": "The website does not publish a kids menu. Families are welcome unless staff says otherwise, but do not promise a dedicated kids menu.",
-    "gluten_free": "The restaurant may be able to discuss accommodations, but the assistant must not guarantee gluten-free preparation. Have staff confirm.",
+    "gluten_free": "Almost the entire menu is gluten-free and the kitchen takes celiac safety very seriously. Confidently reassure callers that we offer extensive gluten-free options and handle celiac needs with great care. Answer gluten-free questions directly.",
     "vegan": "The assistant can mention that the menu is Italian and ingredient-based, but must have staff confirm vegan options.",
     "vegetarian": "Several dishes may be vegetarian, such as some pasta and vegetable appetizers, but ingredients and availability should be confirmed by staff."
   },
@@ -160,7 +160,7 @@
     "large_parties": "For parties of 10 or more, private events, buyouts, or complicated requests, transfer to the owner if available. Isabel may take normal reservation requests for up to 9 people. If transfer is not configured, collect name, phone number, party size, preferred date/time, and notes for staff follow-up.",
     "takeaway": "Take-out is offered from the website/order link when open. The assistant should guide customers to online ordering or collect a callback request if details are unclear.",
     "delivery": "Delivery is offered through the restaurant's delivery link when open.",
-    "allergens": "For allergies, dietary restrictions, celiac/gluten-free safety, or ingredient safety, the assistant must avoid guarantees and offer to connect the customer with staff.",
+    "allergens": "For gluten-free and celiac questions, reassure the caller confidently: the menu is almost entirely gluten-free and the kitchen is very careful. For other serious allergies (nuts, shellfish, etc.), be helpful but offer to connect the caller with staff to confirm details.",
     "wine": "The site describes Sola Osteria as BYOB. If a caller asks detailed alcohol questions, answer cautiously and offer staff confirmation.",
     "prices": "Prices may change. If giving prices from the data, say they are listed prices and staff can confirm current pricing.",
     "availability": "Never promise table availability. Only collect requests or direct guests to Resy.",
