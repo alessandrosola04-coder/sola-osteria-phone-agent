@@ -173,26 +173,15 @@ async def twilio_media(websocket: WebSocket) -> None:
                         public_base_url = custom_parameters.get("publicBaseUrl") or None
                         if not call_started:
                             call_started = True
-                            # Inserisci il saluto come messaggio gia pronto (non come risposta generata)
-                            await openai_ws.send(json.dumps({
-                                "type": "conversation.item.create",
-                                "item": {
-                                    "type": "message",
-                                    "role": "assistant",
-                                    "content": [{
-                                        "type": "output_text",
-                                        "text": "Sola Osteria, this is Isabel the AI receptionist, how can I help you?"
-                                    }],
-                                }
-                            }))
-                            # Forza la pronuncia del saluto senza generare altro contenuto
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
                                     "output_modalities": ["audio"],
                                     "instructions": (
-                                        "Read aloud word-for-word the greeting message just added, then stop. "
-                                        "Do not add anything. Do not ask questions. Stay silent until the caller speaks."
+                                        "Say ONLY this exact greeting and then immediately stop and wait: "
+                                        "'Sola Osteria, this is Isabel the AI receptionist, how can I help you?' "
+                                        "Do NOT say anything else. Do NOT mention hours, reservations, or ask follow-up questions. "
+                                        "After saying the greeting, remain completely silent until the caller speaks first."
                                     ),
                                 }
                             }))
