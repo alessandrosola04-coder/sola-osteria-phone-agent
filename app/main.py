@@ -273,7 +273,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                 },
                 "output": {
                     "format": {"type": "audio/pcmu"},
-                    "voice": "alloy",
+                    "voice": "coral",
                 },
             },
             "tools": [
