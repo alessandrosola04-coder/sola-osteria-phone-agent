@@ -189,6 +189,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                             await openai_ws.send(json.dumps({
                                 "type": "session.update",
                                 "session": {
+                                    "type": "realtime",
                                     "audio": {
                                         "input": {
                                             "turn_detection": {
