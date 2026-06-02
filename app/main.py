@@ -185,25 +185,6 @@ async def twilio_media(websocket: WebSocket) -> None:
                                     ),
                                 }
                             }))
-                            # Dopo il greeting, riattiva l'auto-risposta del VAD per i turni successivi
-                            await openai_ws.send(json.dumps({
-                                "type": "session.update",
-                                "session": {
-                                    "type": "realtime",
-                                    "audio": {
-                                        "input": {
-                                            "turn_detection": {
-                                                "type": "server_vad",
-                                                "threshold": 0.65,
-                                                "prefix_padding_ms": 500,
-                                                "silence_duration_ms": 700,
-                                                "create_response": True,
-                                                "interrupt_response": True,
-                                            }
-                                        }
-                                    }
-                                }
-                            }))
                     elif event == "mark":
                         mark_name = message.get("mark", {}).get("name")
                         if mark_name == "transfer_complete":
@@ -287,7 +268,7 @@ async def configure_realtime_session(openai_ws: Any) -> None:
                         "threshold": 0.65,
                         "prefix_padding_ms": 500,
                         "silence_duration_ms": 700,
-                        "create_response": False,
+                        "create_response": True,
                         "interrupt_response": True,
                     },
                 },
