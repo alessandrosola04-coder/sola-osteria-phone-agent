@@ -150,6 +150,8 @@ async def twilio_media(websocket: WebSocket) -> None:
     public_base_url: str | None = None
     transfer_requested = False
     call_started = False
+    greeting_in_progress = False
+    _caller_has_spoken = False
     closing_for_transfer = False
     transfer_audio_played = asyncio.Event()
 
@@ -160,7 +162,7 @@ async def twilio_media(websocket: WebSocket) -> None:
         await configure_realtime_session(openai_ws)
 
         async def receive_from_twilio() -> None:
-            nonlocal stream_sid, call_sid, public_base_url, call_started, closing_for_transfer
+            nonlocal stream_sid, call_sid, public_base_url, call_started, closing_for_transfer, greeting_in_progress, _caller_has_spoken
             try:
                 async for raw_message in websocket.iter_text():
                     message = json.loads(raw_message)
@@ -173,6 +175,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                         public_base_url = custom_parameters.get("publicBaseUrl") or None
                         if not call_started:
                             call_started = True
+                            greeting_in_progress = True
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
@@ -228,6 +231,17 @@ async def twilio_media(websocket: WebSocket) -> None:
                     result = await handle_tool_call(openai_ws, event, call_sid)
                     if result.get("transfer_to_staff"):
                         transfer_requested = True
+                elif event_type == "response.done" and greeting_in_progress:
+                    # La prima response.done e la fine del greeting.
+                    # Da ora il VAD potrebbe generare una risposta a vuoto: la sopprimiamo
+                    # cancellando qualsiasi risposta non richiesta finche il chiamante non parla.
+                    greeting_in_progress = False
+                elif event_type == "response.created" and greeting_in_progress is False and not _caller_has_spoken:
+                    # Risposta generata senza che il chiamante abbia parlato: annullala
+                    with contextlib.suppress(Exception):
+                        await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                elif event_type == "input_audio_buffer.speech_started":
+                    _caller_has_spoken = True
                 elif event_type == "response.done" and transfer_requested:
                     closing_for_transfer = True
                     if stream_sid:
