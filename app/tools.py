@@ -12,6 +12,17 @@ from zoneinfo import ZoneInfo
 LOCAL_TZ = ZoneInfo("America/New_York")
 RESERVATION_REQUESTS_PATH = Path("data/reservation_requests.jsonl")
 
+# Orari del ristorante, caricati dai dati per il controllo dei giorni di chiusura
+def _load_restaurant_hours() -> dict:
+    try:
+        cfg_path = os.getenv("RESTAURANT_CONFIG", "data/restaurant.json")
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            return json.load(f).get("hours", {})
+    except Exception:
+        return {}
+
+RESTAURANT_HOURS = _load_restaurant_hours()
+
 
 def check_hours(config: dict, day: str | None = None) -> str:
     hours = config["hours"]
@@ -419,6 +430,31 @@ def create_reservation_request(
             "normalized_date": parsed["normalized_date"],
             "display_date": parsed["display_date"],
             "assistant_next_step": parsed["assistant_next_step"],
+        }
+
+    # --- Controllo giorno di chiusura (a prova di errore) ---
+    try:
+        from app.tools import load_restaurant_config_hours  # noqa
+    except Exception:
+        pass
+    _hours = (RESTAURANT_HOURS or {})
+    _weekday = parsed["normalized_date"]
+    try:
+        _dt = datetime.strptime(parsed["normalized_date"], "%Y-%m-%d")
+        _weekday = _dt.strftime("%A").lower()
+    except Exception:
+        _weekday = ""
+    _day_hours = str(_hours.get(_weekday, "")).strip().lower()
+    if _weekday and (_day_hours == "closed" or _day_hours == ""):
+        return {
+            "status": "closed_day",
+            "transfer_to_staff": False,
+            "display_date": parsed["display_date"],
+            "assistant_next_step": (
+                f"Politely tell the caller the restaurant is closed on {_weekday.capitalize()} "
+                f"and we cannot take a reservation for that day. Offer to book another day instead. "
+                f"Do NOT save this reservation."
+            ),
         }
 
     request = {
