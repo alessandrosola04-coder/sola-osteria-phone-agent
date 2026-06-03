@@ -1,4 +1,5 @@
 import asyncio
+import time
 import base64
 import contextlib
 import json
@@ -152,6 +153,7 @@ async def twilio_media(websocket: WebSocket) -> None:
     call_started = False
     greeting_phase = False
     greeting_transcript = ""
+    greeting_done_at = 0.0
     closing_for_transfer = False
     transfer_audio_played = asyncio.Event()
 
@@ -213,7 +215,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                 return
 
         async def send_to_twilio() -> None:
-            nonlocal transfer_requested, closing_for_transfer, greeting_phase, greeting_transcript
+            nonlocal transfer_requested, closing_for_transfer, greeting_phase, greeting_transcript, greeting_done_at
             async for raw_message in openai_ws:
                 event = json.loads(raw_message)
                 event_type = event.get("type")
@@ -226,7 +228,20 @@ async def twilio_media(websocket: WebSocket) -> None:
                     _t = event.get("transcript") or ""
                     print(f"[DIAG] {event_type} | {_t!r}", flush=True)
 
-                # (taglio greeting rimosso: il problema era eco audio, non divagazione)
+                # --- FINESTRA DI GUARDIA ANTI-ECO ---
+                # Quando finisce il greeting, segno l'orario e spengo greeting_phase
+                if event_type == "response.done" and greeting_phase:
+                    greeting_phase = False
+                    greeting_done_at = time.time()
+                # Se una nuova risposta parte entro 2s dal greeting = eco (nessun umano
+                # risponde cosi in fretta) -> la cancello subito sul nascere
+                elif event_type == "response.created" and greeting_done_at:
+                    if time.time() - greeting_done_at < 2.0:
+                        with contextlib.suppress(Exception):
+                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                    else:
+                        greeting_done_at = 0.0
+                # --- FINE FINESTRA DI GUARDIA ---
 
                 if event_type == "response.audio.delta" and stream_sid:
                     await websocket.send_json({
