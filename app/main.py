@@ -150,6 +150,8 @@ async def twilio_media(websocket: WebSocket) -> None:
     public_base_url: str | None = None
     transfer_requested = False
     call_started = False
+    greeting_phase = False
+    greeting_transcript = ""
     closing_for_transfer = False
     transfer_audio_played = asyncio.Event()
 
@@ -160,7 +162,7 @@ async def twilio_media(websocket: WebSocket) -> None:
         await configure_realtime_session(openai_ws)
 
         async def receive_from_twilio() -> None:
-            nonlocal stream_sid, call_sid, public_base_url, call_started, closing_for_transfer
+            nonlocal stream_sid, call_sid, public_base_url, call_started, closing_for_transfer, greeting_phase, greeting_transcript
             try:
                 async for raw_message in websocket.iter_text():
                     message = json.loads(raw_message)
@@ -173,6 +175,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                         public_base_url = custom_parameters.get("publicBaseUrl") or None
                         if not call_started:
                             call_started = True
+                            greeting_phase = True
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
@@ -186,7 +189,6 @@ async def twilio_media(websocket: WebSocket) -> None:
                                         "Do not append offers, do not say 'certainly', do not ask about people, date, or party size. "
                                         "The caller has said NOTHING yet, so there is nothing to help with until they speak."
                                     ),
-                                    "max_output_tokens": 60,
                                 }
                             }))
                     elif event == "mark":
@@ -211,7 +213,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                 return
 
         async def send_to_twilio() -> None:
-            nonlocal transfer_requested, closing_for_transfer
+            nonlocal transfer_requested, closing_for_transfer, greeting_phase, greeting_transcript
             async for raw_message in openai_ws:
                 event = json.loads(raw_message)
                 event_type = event.get("type")
@@ -227,6 +229,18 @@ async def twilio_media(websocket: WebSocket) -> None:
                     _t = event.get("transcript") or event.get("delta") or ""
                     print(f"[DIAG] {event_type} | transcript={_t!r}", flush=True)
                 # --- FINE LOG DIAGNOSTICO ---
+
+                # --- TAGLIO GREETING: ferma la generazione dopo "how can I help you" ---
+                if greeting_phase and event_type in (
+                    "response.audio_transcript.delta",
+                    "response.output_audio_transcript.delta",
+                ):
+                    greeting_transcript += event.get("delta") or ""
+                    if "help you" in greeting_transcript.lower():
+                        greeting_phase = False
+                        with contextlib.suppress(Exception):
+                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
+                # --- FINE TAGLIO GREETING ---
 
                 if event_type == "response.audio.delta" and stream_sid:
                     await websocket.send_json({
