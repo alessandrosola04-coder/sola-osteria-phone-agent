@@ -238,6 +238,8 @@ async def twilio_media(websocket: WebSocket) -> None:
                     greeting_transcript += event.get("delta") or ""
                     if "help you" in greeting_transcript.lower():
                         greeting_phase = False
+                        # piccolo ritardo per lasciar completare l'audio del greeting
+                        await asyncio.sleep(1.5)
                         with contextlib.suppress(Exception):
                             await openai_ws.send(json.dumps({"type": "response.cancel"}))
                 # --- FINE TAGLIO GREETING ---
