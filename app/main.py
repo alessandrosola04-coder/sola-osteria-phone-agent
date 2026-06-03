@@ -173,15 +173,26 @@ async def twilio_media(websocket: WebSocket) -> None:
                         public_base_url = custom_parameters.get("publicBaseUrl") or None
                         if not call_started:
                             call_started = True
+                            # Inserisci il saluto come messaggio assistant gia pronto
+                            await openai_ws.send(json.dumps({
+                                "type": "conversation.item.create",
+                                "item": {
+                                    "type": "message",
+                                    "role": "assistant",
+                                    "content": [{
+                                        "type": "text",
+                                        "text": "Sola Osteria, this is Isabel the AI receptionist, how can I help you?"
+                                    }],
+                                }
+                            }))
+                            # Chiedi SOLO di pronunciare quel messaggio, senza generare nuovo contenuto
                             await openai_ws.send(json.dumps({
                                 "type": "response.create",
                                 "response": {
                                     "output_modalities": ["audio"],
                                     "instructions": (
-                                        "Say ONLY this exact greeting and then immediately stop and wait: "
-                                        "'Sola Osteria, this is Isabel the AI receptionist, how can I help you?' "
-                                        "Do NOT say anything else. Do NOT mention hours, reservations, or ask follow-up questions. "
-                                        "After saying the greeting, remain completely silent until the caller speaks first."
+                                        "Speak aloud, word for word, ONLY the exact assistant message that was just added to the conversation. "
+                                        "Produce no other words. Stop immediately after. Do not ask any question or start any flow."
                                     ),
                                 }
                             }))
