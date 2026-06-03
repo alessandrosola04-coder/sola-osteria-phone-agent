@@ -210,7 +210,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                 return
 
         async def send_to_twilio() -> None:
-            nonlocal transfer_requested, closing_for_transfer, greeting_in_progress, _caller_has_spoken
+            nonlocal transfer_requested, closing_for_transfer
             async for raw_message in openai_ws:
                 event = json.loads(raw_message)
                 event_type = event.get("type")
