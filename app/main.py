@@ -218,18 +218,6 @@ async def twilio_media(websocket: WebSocket) -> None:
                 event = json.loads(raw_message)
                 event_type = event.get("type")
 
-                # --- LOG DIAGNOSTICO TEMPORANEO ---
-                if event_type in (
-                    "response.created", "response.done",
-                    "response.audio_transcript.delta", "response.audio_transcript.done",
-                    "response.output_audio_transcript.delta", "response.output_audio_transcript.done",
-                    "input_audio_buffer.speech_started", "input_audio_buffer.speech_stopped",
-                    "conversation.item.created",
-                ):
-                    _t = event.get("transcript") or event.get("delta") or ""
-                    print(f"[DIAG] {event_type} | transcript={_t!r}", flush=True)
-                # --- FINE LOG DIAGNOSTICO ---
-
                 # (taglio greeting rimosso: il problema era eco audio, non divagazione)
 
                 if event_type == "response.audio.delta" and stream_sid:
