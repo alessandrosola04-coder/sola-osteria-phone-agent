@@ -230,19 +230,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                     print(f"[DIAG] {event_type} | transcript={_t!r}", flush=True)
                 # --- FINE LOG DIAGNOSTICO ---
 
-                # --- TAGLIO GREETING: ferma la generazione dopo "how can I help you" ---
-                if greeting_phase and event_type in (
-                    "response.audio_transcript.delta",
-                    "response.output_audio_transcript.delta",
-                ):
-                    greeting_transcript += event.get("delta") or ""
-                    if "help you" in greeting_transcript.lower():
-                        greeting_phase = False
-                        # piccolo ritardo per lasciar completare l'audio del greeting
-                        await asyncio.sleep(0.6)
-                        with contextlib.suppress(Exception):
-                            await openai_ws.send(json.dumps({"type": "response.cancel"}))
-                # --- FINE TAGLIO GREETING ---
+                # (taglio greeting rimosso: il problema era eco audio, non divagazione)
 
                 if event_type == "response.audio.delta" and stream_sid:
                     await websocket.send_json({
@@ -295,9 +283,10 @@ async def configure_realtime_session(openai_ws: Any) -> None:
             "audio": {
                 "input": {
                     "format": {"type": "audio/pcmu"},
+                    "noise_reduction": {"type": "far_field"},
                     "turn_detection": {
                         "type": "server_vad",
-                        "threshold": 0.65,
+                        "threshold": 0.9,
                         "prefix_padding_ms": 500,
                         "silence_duration_ms": 700,
                         "create_response": True,
