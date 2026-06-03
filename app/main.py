@@ -186,7 +186,7 @@ async def twilio_media(websocket: WebSocket) -> None:
                                         "Do not append offers, do not say 'certainly', do not ask about people, date, or party size. "
                                         "The caller has said NOTHING yet, so there is nothing to help with until they speak."
                                     ),
-                                    "max_output_tokens": 60,
+                                    "max_output_tokens": 24,
                                 }
                             }))
                     elif event == "mark":
