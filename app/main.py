@@ -178,11 +178,15 @@ async def twilio_media(websocket: WebSocket) -> None:
                                 "response": {
                                     "output_modalities": ["audio"],
                                     "instructions": (
-                                        "Say ONLY this exact greeting and then immediately stop and wait: "
-                                        "'Sola Osteria, this is Isabel the AI receptionist, how can I help you?' "
-                                        "Do NOT say anything else. Do NOT mention hours, reservations, or ask follow-up questions. "
-                                        "After saying the greeting, remain completely silent until the caller speaks first."
+                                        "Your entire response must be EXACTLY this sentence and NOTHING after it: "
+                                        "Sola Osteria, this is Isabel the AI receptionist, how can I help you? "
+                                        "</end>. "
+                                        "Treat </end> as a hard stop. Output the sentence, then the response is COMPLETE. "
+                                        "It is physically forbidden to output any token after the question mark. "
+                                        "Do not append offers, do not say 'certainly', do not ask about people, date, or party size. "
+                                        "The caller has said NOTHING yet, so there is nothing to help with until they speak."
                                     ),
+                                    "max_output_tokens": 24,
                                 }
                             }))
                     elif event == "mark":
