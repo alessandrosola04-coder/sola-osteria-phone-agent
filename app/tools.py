@@ -130,7 +130,6 @@ def resolve_reservation_date(date_text: str) -> dict:
             "assistant_next_step": "Ask the caller for the reservation date again, using a specific weekday and month/day if possible.",
         }
 
-    confirmation_needed = parsed["confidence"] != "high"
     response = {
         "resolved": True,
         "date_input": date_text,
@@ -138,12 +137,11 @@ def resolve_reservation_date(date_text: str) -> dict:
         "display_date": format_display_date(parsed["date"]),
         "weekday": parsed["date"].strftime("%A"),
         "confidence": parsed["confidence"],
-        "requires_confirmation": confirmation_needed,
+        "requires_confirmation": False,
     }
-    if confirmation_needed:
-        response["assistant_next_step"] = f"Ask: Just to confirm, do you mean {response['display_date']}?"
-    else:
-        response["assistant_next_step"] = f"Use {response['display_date']} as the reservation date."
+    # Nessuna conferma intermedia: la data risolta si usa direttamente.
+    # La conferma avviene nel riepilogo finale della prenotazione.
+    response["assistant_next_step"] = f"Use {response['display_date']} as the reservation date. Do not ask the caller to confirm the date now."
     return response
 
 
@@ -320,15 +318,13 @@ def parse_weekday_phrase(text: str, today: date_cls) -> dict | None:
             has_next = re.search(r"\b(next|prossimo|prossima)\b", text) is not None
 
             if has_next:
-                nearest_candidate = today + timedelta(days=days_until or 7)
-                candidate = nearest_candidate + timedelta(days=7)
-                return {"resolved": True, "date": candidate, "confidence": "medium"}
-            if has_this:
-                candidate = today + timedelta(days=days_until)
-                return {"resolved": True, "date": candidate, "confidence": "medium"}
-
+                # "next Saturday" = il sabato della settimana prossima (+7 dal piu vicino)
+                nearest = today + timedelta(days=days_until or 7)
+                candidate = nearest + timedelta(days=7)
+                return {"resolved": True, "date": candidate, "confidence": "high"}
+            # "Saturday" o "this Saturday" = il primo sabato piu vicino
             candidate = today + timedelta(days=days_until or 7)
-            return {"resolved": True, "date": candidate, "confidence": "medium"}
+            return {"resolved": True, "date": candidate, "confidence": "high"}
     return None
 
 
